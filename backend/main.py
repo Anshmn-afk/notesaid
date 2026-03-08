@@ -75,16 +75,30 @@ def upload_audio(file: UploadFile = File(...)):
         os.remove(temp_filepath)
         temp_filepath = None
         
-        # Step 3: Ask Groq's powerful Llama model to summarize and extract action items
-        prompt = f"""Summarize the following meeting transcript and extract clear action items.
-        
-Return the output strictly in the following JSON format:
+        # Step 3: Ask Groq's powerful Llama model to format the data for the new UI
+        prompt = f"""Process the following meeting transcription text. Extract the information and format it into two specific arrays.
+
+1. `dashboardCards`: You must return exactly 4 cards:
+- id: "card-summary", type: "summary", title: "Executive Summary", icon: "zap" (content is a short paragraph string)
+- id: "card-action", type: "action", title: "Action Items", icon: "check-circle" (content is HTML: string of `<div class="card-list-item">...</div>` items)
+- id: "card-decision", type: "decision", title: "Key Decisions", icon: "git-commit" (content is HTML: string of `<div class="card-list-item">...</div>` items)
+- id: "card-important", type: "important", title: "Session Highlights", icon: "clock" (content is HTML: string of `<div class="card-list-item">...</div>` items)
+
+2. `smartTranscript`: Parse the raw text into a conversational array. For each segment, identify the speaker (e.g. "Speaker 1"), assign a role class ("role-s1", "role-s2", or "role-s3"), guess a relative timestamp like "00:00", and provide their text.
+
+Return exactly this JSON format:
 {{
-  "summary": "...",
-  "action_items": ["...", "..."]
+  "dashboardCards": [
+    {{ "id": "card-summary", "type": "summary", "title": "Executive Summary", "icon": "zap", "content": "..." }},
+    ...
+  ],
+  "smartTranscript": [
+    {{ "speaker": "...", "role": "role-s1", "time": "00:00", "text": "..." }},
+    ...
+  ]
 }}
 
-Here is the transcript:
+Raw Transcript:
 {transcript_text}
 """
         
@@ -107,9 +121,8 @@ Here is the transcript:
         gpt_output = json.loads(completion.choices[0].message.content)
         
         return {
-            "transcript": transcript_text,
-            "summary": gpt_output.get("summary", "No summary could be generated."),
-            "action_items": gpt_output.get("action_items", [])
+            "dashboardCards": gpt_output.get("dashboardCards", []),
+            "smartTranscript": gpt_output.get("smartTranscript", [])
         }
         
     except Exception as e:

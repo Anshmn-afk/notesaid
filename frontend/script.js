@@ -147,11 +147,14 @@ transcribeBtn.addEventListener('click', (e) => {
         progressWrapper.style.display = 'flex';
         gsap.fromTo(progressWrapper, {opacity: 0, scale: 0.8}, {opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.2)"});
         
-        simulateMockAPI();
+        processAudioAPI();
     }});
 });
 
-function simulateMockAPI() {
+let dashboardData = [];
+let transcriptData = [];
+
+async function processAudioAPI() {
     let progress = 0;
     
     const statusMessages = [
@@ -164,10 +167,11 @@ function simulateMockAPI() {
     let statusIndex = 0;
 
     const interval = setInterval(() => {
-        // Increment progress (approx 4 seconds to completion)
-        progress += Math.random() * 5 + 2; 
-        if (progress > 100) progress = 100;
-        updateProgress(progress);
+        // Increment progress up to 90% while waiting for API
+        if (progress < 90) {
+            progress += Math.random() * 5 + 1; 
+            updateProgress(progress);
+        }
         
         // Pulsating Edge Glow on Box based on Progress
         gsap.to('.drop-zone', {
@@ -184,14 +188,42 @@ function simulateMockAPI() {
                 gsap.to(statusText, {opacity: 1, duration: 0.2});
             }});
         }
+    }, 400);
 
-        if (progress === 100) {
-            clearInterval(interval);
-            setTimeout(() => {
-                transitionToDashboard();
-            }, 600);
+    try {
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+
+        const response = await fetch('http://localhost:8000/upload-audio', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error(`API request failed with status ${response.status}`);
         }
-    }, 150); // 150ms * roughly 30 ticks = 4.5 seconds
+
+        const data = await response.json();
+        
+        // Populate the dynamic global arrays with real AI data
+        dashboardData = data.dashboardCards || [];
+        transcriptData = data.smartTranscript || [];
+
+        // Force complete the loader
+        clearInterval(interval);
+        updateProgress(100);
+        statusText.innerText = "Complete!";
+
+        setTimeout(() => {
+            transitionToDashboard();
+        }, 600);
+
+    } catch (error) {
+        clearInterval(interval);
+        statusText.innerText = "Error processing audio!";
+        statusText.style.color = "#ff4444";
+        console.error("API Error", error);
+    }
 }
 
 // --- 3. Transition to Results Interface ---
@@ -222,33 +254,7 @@ function transitionToDashboard() {
     });
 }
 
-// --- Data Models ---
-const mockDashboardData = [
-    { 
-        id: 'card-summary', type: 'summary', title: 'Executive Summary', icon: 'zap', 
-        content: 'Design review completed for the AI Notes App. The team agreed on using a dark glassmorphism aesthetic with bright neon accents. GSAP will power the motion design layout.'
-    },
-    { 
-        id: 'card-action', type: 'action', title: 'Action Items', icon: 'check-circle', 
-        content: '<div class="card-list-item">Frontend Team: Finalize GSAP scroll animations</div><div class="card-list-item">Design: Export SVG assets for particles</div><div class="card-list-item">Backend: Establish API mock threshold delays</div>'
-    },
-    { 
-        id: 'card-decision', type: 'decision', title: 'Key Decisions', icon: 'git-commit', 
-        content: '<div class="card-list-item">Drop React complexity in favor of Vanilla JS for absolute performance control.</div><div class="card-list-item">Adopt Mobile-first spacing scheme.</div>'
-    },
-    { 
-        id: 'card-important', type: 'important', title: 'Session Highlights', icon: 'clock', 
-        content: '<div class="card-list-item"><strong>01:14</strong> - Discussion on accessibility implementation</div><div class="card-list-item"><strong>04:22</strong> - Final tech stack confirmation</div>'
-    }
-];
-
-const mockTranscriptData = [
-    { speaker: 'Design Lead', role: 'role-s1', time: '00:03', text: "Welcome everyone. Today we are signing off on the UI specs for the AI Notes interface. I want to emphasize that motion is critical here." },
-    { speaker: 'Frontend Architect', role: 'role-s2', time: '00:15', text: "Understood. We are utilizing GSAP for buttery smooth rendering. The glassmorphism layers are mapped using custom CSS variables to hit the 60fps target." },
-    { speaker: 'Product Manager', role: 'role-s3', time: '00:32', text: "That sounds excellent. What about user personalization?" },
-    { speaker: 'Frontend Architect', role: 'role-s2', time: '00:38', text: "We're implementing LocalStorage trackers on the dashboard cards. If a user interacts heavily with tasks, the Action Items card automatically floats to the top of the hierarchy." },
-    { speaker: 'Design Lead', role: 'role-s1', time: '00:54', text: "Perfect. It makes the SaaS feel ALIVE and intelligent. Let's get this shipped." },
-];
+// --- Data Models (Populated dynamically) ---
 
 // --- 4. Personalization & Dashboard Rendering ---
 function getCardScores() {
@@ -270,7 +276,7 @@ function buildDashboardCards() {
     const scores = getCardScores();
     
     // Sort logic: higher score gets pushed to the top automatically
-    const sortedData = [...mockDashboardData].sort((a, b) => {
+    const sortedData = [...dashboardData].sort((a, b) => {
         const scoreA = scores[a.id] || 0;
         const scoreB = scores[b.id] || 0;
         return scoreB - scoreA;
@@ -318,7 +324,7 @@ function buildDashboardCards() {
 function buildTranscriptData() {
     transcriptContent.innerHTML = '';
 
-    mockTranscriptData.forEach((item, index) => {
+    transcriptData.forEach((item, index) => {
         const block = document.createElement('div');
         block.className = `speaker-block ${item.role}`;
         
