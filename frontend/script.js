@@ -165,11 +165,23 @@ async function processAudioAPI() {
         "Finalizing intelligent notes..."
     ];
     let statusIndex = 0;
+    
+    // Check if the file is large (over 22MB)
+    const isLargeFile = selectedFile.size > 22 * 1024 * 1024;
+    
+    if (isLargeFile) {
+        statusMessages.unshift("Large file detected. Chunking audio...");
+        statusMessages.splice(2, 0, "Processing chunks sequentially (this may take time)...");
+        statusMessages.push("Stitching transcripts...");
+    }
 
     const interval = setInterval(() => {
-        // Increment progress up to 90% while waiting for API
-        if (progress < 90) {
-            progress += Math.random() * 5 + 1; 
+        // Increment progress up to 90% (or 95% for large files) while waiting for API
+        const maxProgress = isLargeFile ? 96 : 90;
+        if (progress < maxProgress) {
+            // Slower progress for large files
+            const increment = isLargeFile ? (Math.random() * 2 + 0.5) : (Math.random() * 5 + 1);
+            progress += increment; 
             updateProgress(progress);
         }
         
@@ -320,65 +332,119 @@ function buildDashboardCards() {
     lucide.createIcons();
 }
 
-// --- 5. Transcript Typing Experience ---
+// --- 5. Categorized Transcript Accordion Experience ---
 function buildTranscriptData() {
     transcriptContent.innerHTML = '';
 
-    transcriptData.forEach((item, index) => {
-        const block = document.createElement('div');
-        block.className = `speaker-block ${item.role}`;
+    transcriptData.forEach((group, groupIdx) => {
+        const groupEl = document.createElement('div');
+        groupEl.className = 'topic-group';
         
-        // Initial letter for Avatar
-        const avatarInitial = item.speaker.split(' ').map(n => n.charAt(0)).join('').substring(0, 2);
-
-        block.innerHTML = `
-            <div class="speaker-meta">
-                <div class="speaker-avatar">${avatarInitial}</div>
-                <span class="speaker-name">${item.speaker}</span>
-                <span class="speaker-time" aria-label="Timestamp ${item.time}">${item.time}</span>
+        groupEl.innerHTML = `
+            <div class="topic-header" id="topic-header-${groupIdx}">
+                <div class="topic-meta">
+                    <h4 class="topic-title">${group.title}</h4>
+                    <span class="topic-time-badge">${group.timeRange}</span>
+                </div>
+                <p class="topic-summary">${group.summary}</p>
+                <i data-lucide="chevron-down" class="topic-toggle-icon"></i>
             </div>
-            <div class="speaker-dialogue" id="dialog-${index}" title="Click to copy text">
-                <span class="dialogue-text"></span>
-                <div class="copy-toast"><i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> Copied</div>
+            <div class="topic-content" id="topic-content-${groupIdx}">
+                <div class="segments-container" id="segments-container-${groupIdx}"></div>
+                <button class="load-more-btn" id="load-more-${groupIdx}" style="display: none;"></button>
             </div>
         `;
         
-        transcriptContent.appendChild(block);
+        transcriptContent.appendChild(groupEl);
+        
+        const header = groupEl.querySelector('.topic-header');
+        const container = groupEl.querySelector('.segments-container');
+        const loadMoreBtn = groupEl.querySelector('.load-more-btn');
+        const icon = groupEl.querySelector('.topic-toggle-icon');
+        
+        let visibleCount = 0;
+        const CHUNK_SIZE = 5;
+        
+        function renderNextSegments() {
+            const nextBatch = group.segments.slice(visibleCount, visibleCount + CHUNK_SIZE);
+            
+            nextBatch.forEach((item, idx) => {
+                const block = document.createElement('div');
+                block.className = `speaker-block ${item.role}`;
+                
+                // Initial letter for Avatar
+                const avatarInitial = item.speaker.split(' ').map(n => n.charAt(0)).join('').substring(0, 2);
 
-        // Logic for GSAP Typing Effect
-        // We will stagger the rendering of each block so it feels like a live conversation
-        const targetElement = block.querySelector('.dialogue-text');
+                block.innerHTML = `
+                    <div class="speaker-meta">
+                        <div class="speaker-avatar">${avatarInitial}</div>
+                        <span class="speaker-name">${item.speaker}</span>
+                        <span class="speaker-time" aria-label="Timestamp ${item.time}">${item.time}</span>
+                    </div>
+                    <div class="speaker-dialogue" title="Click to copy text">
+                        <span class="dialogue-text">${item.text}</span>
+                        <div class="copy-toast"><i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> Copied</div>
+                    </div>
+                `;
+                
+                container.appendChild(block);
+                
+                // Copy micro-interaction
+                const dialogueContainer = block.querySelector('.speaker-dialogue');
+                const toast = block.querySelector('.copy-toast');
+                
+                dialogueContainer.addEventListener('click', () => {
+                    navigator.clipboard.writeText(item.text);
+                    gsap.timeline()
+                        .to(dialogueContainer, { color: '#00ff88', duration: 0.2 })
+                        .to(toast, { opacity: 1, y: -5, duration: 0.3 }, "<")
+                        .to(toast, { opacity: 0, y: -10, duration: 0.3 }, "+=1")
+                        .to(dialogueContainer, { color: 'rgba(255, 255, 255, 0.85)', duration: 0.3 }, "<");
+                });
+                
+                // Reveal animation for newly loaded blocks
+                gsap.fromTo(block, 
+                    { opacity: 0, y: 15 }, 
+                    { opacity: 1, y: 0, duration: 0.4, delay: idx * 0.1 }
+                );
+            });
+            
+            visibleCount += nextBatch.length;
+            
+            if (visibleCount >= group.segments.length) {
+                loadMoreBtn.style.display = 'none';
+            } else {
+                loadMoreBtn.style.display = 'block';
+                loadMoreBtn.innerText = `View More (${group.segments.length - visibleCount} remaining)`;
+            }
+            
+            lucide.createIcons();
+        }
         
-        const tl = gsap.timeline({delay: 1.5 + (index * 2)}); // sequential reveal
+        // Setup initial accordion state (collapsed)
+        let isExpanded = false;
         
-        tl.fromTo(block, 
-            { opacity: 0, y: 20 }, 
-            { opacity: 1, y: 0, duration: 0.5 }
-        )
-        .to(targetElement, {
-            text: item.text,
-            duration: item.text.length * 0.02, // speed of typing
-            ease: "none",
-            onUpdate: () => {
-                // Keep scroll at bottom during generation
-                transcriptContent.scrollTop = transcriptContent.scrollHeight;
+        header.addEventListener('click', () => {
+            isExpanded = !isExpanded;
+            
+            if (isExpanded) {
+                groupEl.classList.add('expanded');
+                // Lazy load first batch of lines if empty
+                if (visibleCount === 0) {
+                    renderNextSegments();
+                }
+            } else {
+                groupEl.classList.remove('expanded');
             }
         });
-
-        // Copy micro-interaction
-        const dialogueContainer = block.querySelector('.speaker-dialogue');
-        const toast = block.querySelector('.copy-toast');
         
-        dialogueContainer.addEventListener('click', () => {
-            navigator.clipboard.writeText(item.text);
-            
-            // GSAP pulse green text and show toast
-            gsap.timeline()
-                .to(dialogueContainer, { color: '#00ff88', duration: 0.2 })
-                .to(toast, { opacity: 1, y: -5, duration: 0.3 }, "<")
-                .to(toast, { opacity: 0, y: -10, duration: 0.3 }, "+=1")
-                .to(dialogueContainer, { color: 'rgba(255, 255, 255, 0.85)', duration: 0.3 }, "<");
-        });
+        loadMoreBtn.addEventListener('click', renderNextSegments);
+        
+        // Staggered entrance animation for category cards
+        gsap.fromTo(groupEl, 
+            { opacity: 0, y: 20 }, 
+            { opacity: 1, y: 0, duration: 0.5, delay: 1.5 + (groupIdx * 0.15) }
+        );
     });
 
     lucide.createIcons();
