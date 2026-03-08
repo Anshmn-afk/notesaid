@@ -37,7 +37,7 @@ if not groq_api_key:
 client = Groq(api_key=groq_api_key)
 
 @app.post("/upload-audio")
-async def upload_audio(file: UploadFile = File(...)):
+def upload_audio(file: UploadFile = File(...)):
     """
     Accepts an audio file upload, transcribes it using Groq's Whisper model,
     and generates a summary with actionable items using Llama 3.
