@@ -1,13 +1,114 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Meeting Notes Generator | Premium Edition</title>
+    <!-- Fonts: Neo-brutalist Display & Readable Body -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Main Styles -->
+    <link rel="stylesheet" href="styles.css">
+    <!-- GSAP for Elite Motion Design -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/TextPlugin.min.js"></script>
+    <!-- Modern Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <!-- Ambient Animated Gradient Background -->
+    <div class="ambient-bg" aria-hidden="true">
+        <div class="glow glow-1"></div>
+        <div class="glow glow-2"></div>
+        <div class="glow glow-3"></div>
+    </div>
+
+    <!-- Parallax Floating Particles -->
+    <div class="particles" id="particles" aria-hidden="true">
+        <div class="particle p-1"></div>
+        <div class="particle p-2"></div>
+        <div class="particle p-3"></div>
+    </div>
+
+    <main class="app-container">
+        
+        <!-- SECTION 1: HERO -->
+        <section class="hero" id="hero">
+            <h1 class="hero-title" aria-label="Turn Talks Into Tasks">
+                <div class="word-wrap"><span class="word">Turn</span></div>
+                <div class="word-wrap"><span class="word">Talks</span></div>
+                <div class="word-wrap"><span class="word">Into</span></div>
+                <div class="word-wrap"><span class="word text-gradient">Tasks</span></div>
+            </h1>
+            <p class="hero-subtitle">
+                The world's most intelligent AI meeting assistant. Just drop your audio, and watch as it instantly transforms disorganized chatter into structured insights, action items, and pristine transcripts.
+            </p>
+            <button class="btn btn-primary" id="hero-cta" aria-label="Scroll to upload">
+                <span class="btn-text">Upload Meeting Audio</span>
+                <span class="btn-ripple"></span>
+            </button>
+        </section>
+
+        <!-- SECTION 2: AUDIO UPLOAD EXPERIENCE -->
+        <section class="upload-container" id="upload-container">
+            <div class="glass-panel drop-zone" id="drop-zone" tabindex="0" role="button" aria-label="File upload zone">
+                <div class="drop-zone-content" id="drop-content">
+                    <div class="upload-icon-wrapper">
+                        <i data-lucide="upload-cloud" class="upload-icon"></i>
+                    </div>
+                    <h2 class="drop-title">Drop your audio file here</h2>
+                    <p class="drop-desc">or click to browse for an MP3, WAV, or M4A</p>
+                </div>
+                
+                <input type="file" id="file-input" accept="audio/*" class="file-input-hidden">
+                
+                <!-- Circular Progress Ring -->
+                <div class="progress-ring-wrapper" id="progress-wrapper">
+                    <div class="progress-status-text" id="status-text">Transcribing Audio...</div>
+                    <svg class="progress-ring" viewBox="0 0 160 160">
+                        <circle class="progress-ring__bg" r="70" cx="80" cy="80" fill="transparent" stroke-width="8"></circle>
+                        <circle class="progress-ring__circle" r="70" cx="80" cy="80" fill="transparent" stroke-width="8"></circle>
+                    </svg>
+                    <div class="progress-percentage"><span id="progress-text">0</span>%</div>
+                </div>
+            </div>
+            <div class="upload-cta-container" id="upload-cta-wrapper">
+                <button class="btn btn-secondary" id="transcribe-btn" disabled>
+                    <span class="btn-text">Transcribe Now</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- DYNAMIC RESULTS AREA -->
+        <div class="results-wrapper" id="results-wrapper">
+            
+            <!-- SECTION 4: AI NOTES DASHBOARD -->
+            <section class="dashboard-section" id="dashboard-section">
+                <!-- Cards are dynamically injected here and sorted via LocalStorage -->
+            </section>
+
+            <!-- SECTION 3: TRANSCRIPT EXPERIENCE -->
+            <section class="transcript-section" id="transcript-section">
+                <div class="glass-panel transcript-panel">
+                    <div class="panel-header">
+                        <div class="icon-box"><i data-lucide="mic"></i></div>
+                        <h2>Smart Transcript</h2>
+                        <div class="status-indicator">
+                            <span class="pulse-dot"></span> Live Generation
+                        </div>
+                    </div>
+                    <div class="transcript-content" id="transcript-content">
+                        <!-- Speaker dialog injected by GSAP -->
+                    </div>
+                </div>
+            </section>
+            
+        </div>
+    </main>
+
+    <footer class="minimal-footer">
+        <p>©️ Created by Anshumaan Suryavanshi and Prishu Raj Singh</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
 </html>
