@@ -41,7 +41,7 @@ function App() {
     setResults(null);
 
     const formData = new FormData();
-    formData.append('audio', file);
+    formData.append('file', file);
 
     try {
       const response = await axios.post('http://localhost:8000/upload-audio', formData, {
@@ -53,7 +53,9 @@ function App() {
       setResults(response.data);
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.message || 'Failed to process audio. Please try again.');
+      const detail = err.response?.data?.detail;
+      const errorMsg = typeof detail === 'string' ? detail : (detail?.[0]?.msg || err.response?.data?.message || 'Failed to process audio. Please try again.');
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }

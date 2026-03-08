@@ -1,12 +1,11 @@
 import os
 import json
 import shutil
+from groq import Groq
+from dotenv import load_dotenv
 from tempfile import NamedTemporaryFile
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from openai import OpenAI
-
-app = FastAPI(title="AI Meeting Notes Generator")
 
 # Enable CORS so a frontend can call the API
 app.add_middleware(
@@ -17,8 +16,8 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-# Initialize OpenAI Client using the OPENAI_API_KEY environment variable
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+# Initialize Groq Client 
+client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 @app.post("/upload-audio")
 async def upload_audio(file: UploadFile = File(...)):
@@ -36,10 +35,10 @@ async def upload_audio(file: UploadFile = File(...)):
             shutil.copyfileobj(file.file, temp_audio)
             temp_filepath = temp_audio.name
             
-        # 2. Send the file to OpenAI Whisper API for transcription
+        # 2. Send the file to Groq Whisper API for transcription
         with open(temp_filepath, "rb") as audio_file:
             transcript_response = client.audio.transcriptions.create(
-                model="whisper-1",
+                model="whisper-large-v3", # Groq's whisper model
                 file=audio_file,
                 response_format="text"
             )
@@ -50,7 +49,7 @@ async def upload_audio(file: UploadFile = File(...)):
         # Clean up temp file
         os.remove(temp_filepath)
         
-        # 3. Send transcript to GPT for Summarization and Action Items
+        # 3. Send transcript to Groq for Summarization and Action Items
         prompt = f"""Summarize the following meeting transcript and extract clear action items.
         
 Return output in JSON format:
@@ -64,7 +63,7 @@ Transcript:
 """
         
         completion = client.chat.completions.create(
-            model="gpt-4o-mini", # using an efficient model suitable for standard meeting lengths
+            model="llama-3.3-70b-versatile", # using Groq's fast Llama 3 model
             response_format={ "type": "json_object" },
             messages=[
                 {"role": "system", "content": "You are a helpful assistant designed to output well-structured JSON."},
@@ -72,7 +71,7 @@ Transcript:
             ]
         )
         
-        # 4. Parse GPT response
+        # 4. Parse Groq response
         gpt_output = json.loads(completion.choices[0].message.content)
         
         return {
@@ -82,10 +81,15 @@ Transcript:
         }
         
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
         # Avoid leaving orphaned temp files in case of an error
         if 'temp_filepath' in locals() and os.path.exists(temp_filepath):
-            os.remove(temp_filepath)
-        raise HTTPException(status_code=500, detail=str(e))
+            try:
+                os.remove(temp_filepath)
+            except:
+                pass
+        raise HTTPException(status_code=500, detail=error_details)
 
 if __name__ == "__main__":
     import uvicorn
