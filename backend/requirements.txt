@@ -5,3 +5,4 @@ openai
 pydantic
 groq
 python-dotenv
+pydub
