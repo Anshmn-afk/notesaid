@@ -6,4 +6,3 @@ pydantic
 groq
 python-dotenv
 pydub
-pyaudioop
