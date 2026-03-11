@@ -24,7 +24,11 @@ app = FastAPI(
 # Enable CORS so that our React frontend can communicate with this API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, change this to your frontend URL
+    allow_origins=[
+        "https://notesaid-1.onrender.com", 
+        "http://localhost:5173", 
+        "http://localhost:3000"
+    ],
     allow_credentials=True,
     allow_methods=["*"],  
     allow_headers=["*"],  
