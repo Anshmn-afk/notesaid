@@ -252,7 +252,8 @@ Raw Transcript:
             err_file.write(error_details)
         
         # Send a 500 Internal Server error back to the frontend with the explicit error trace
-        raise HTTPException(status_code=500, detail=error_details)
+        print(f"ERROR CAUGHT IN ENDPOINT: {error_details}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
