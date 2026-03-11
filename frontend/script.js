@@ -206,7 +206,7 @@ async function processAudioAPI() {
         const formData = new FormData();
         formData.append('file', selectedFile);
 
-        const response = await fetch('http://localhost:8000/upload-audio', {
+        const response = await fetch('https://notesaid.onrender.com/upload-audio', {
             method: 'POST',
             body: formData
         });
